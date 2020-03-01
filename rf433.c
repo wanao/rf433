@@ -1,4 +1,5 @@
 #include <linux/init.h>  
+#include <linux/stat.h>  
 #include <linux/kobject.h>
 #include <linux/slab.h>
 #include <linux/device.h>
@@ -26,14 +27,9 @@ MODULE_VERSION("1.0");
 static struct class rf433_class;
 struct kobject *rf433_kobj;
 
-static struct class_attribute rf433_class_attrs[] = {
-  __ATTR_NULL
-};
-
 static struct class rf433_class = {
   .name =         "rf433",
-  .owner =        THIS_MODULE,
-  .class_attrs =  rf433_class_attrs,
+  .owner =        THIS_MODULE
 };
 
 // Number of code words in a code frame
@@ -86,10 +82,10 @@ static ssize_t rf433_command_store (struct device *dev,struct device_attribute *
 static ssize_t rf433_codeword_store (struct device *dev,struct device_attribute *attr, const char *buf, size_t size);
 
 // no pulse mode for now; just cycle mode
-static DEVICE_ATTR(send, 0666, NULL, rf433_send_store);
-static DEVICE_ATTR(address, 0666, rf433_address_show, rf433_address_store);
-static DEVICE_ATTR(command, 0666, rf433_command_show, rf433_command_store);
-static DEVICE_ATTR(codeword, 0666, rf433_codeword_show, rf433_codeword_store);
+static DEVICE_ATTR(send, 0644, NULL, rf433_send_store);
+static DEVICE_ATTR(address, 0644, rf433_address_show, rf433_address_store);
+static DEVICE_ATTR(command, 0644, rf433_command_show, rf433_command_store);
+static DEVICE_ATTR(codeword, 0644, rf433_codeword_show, rf433_codeword_store);
 
 static const struct attribute *rf433_attrs[] = {
   &dev_attr_send.attr,
@@ -183,7 +179,7 @@ void __iomem *addr;
 // Accessors
 //
 static ssize_t rf433_address_show (struct device *dev, struct device_attribute *attr, char *buf) {
-char buffer[9];
+char buffer[10];
 
   const struct rf433_channel *channel = dev_get_drvdata (dev);
 
@@ -308,8 +304,7 @@ __u32 reg;
     if (!action) {
 
       // Don't care if it's still running, just cancel (unless it was never initialized)
-      if (hr_timer.start_pid != 0)
-        hrtimer_cancel (&hr_timer);
+      hrtimer_cancel (&hr_timer);
 
       // release mutex - ready to send again
       mutex_unlock (&rf433_mutex);
@@ -319,7 +314,7 @@ __u32 reg;
       reg &= ~(1 << 0x06);      
       iowrite32 (reg, channel -> datareg);
 
-      printk(KERN_INFO "[%s] Stopping timer pid: %d\n", rf433_class.name, hr_timer.start_pid);
+      printk(KERN_INFO "[%s] Stopping timer\n", rf433_class.name);
 
       return size;
     }
